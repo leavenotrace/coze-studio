@@ -349,3 +349,41 @@ docker compose -f docker/docker-compose.yml restart coze-server
    - 配置 Elasticsearch 副本数为 0（单节点集群）
    - 定期备份数据目录
    - 监控容器资源使用情况
+
+
+---
+
+## 问题 4: 文件上传 413 错误
+
+### 症状
+```
+Request URL: https://coze.happygpts.cn/api/bot/upload_file
+Status Code: 413 Content Too Large
+```
+
+### 根本原因
+Nginx 默认的 `client_max_body_size` 限制为 1MB，但后端配置支持最大 1GB 的文件上传（`MAX_REQUEST_BODY_SIZE=1073741824`）。
+
+### 解决方案
+在 `docker/vhost.d/coze.happygpts.cn` 文件顶部添加：
+
+```nginx
+# Increase upload size limit to 1GB (matching backend MAX_REQUEST_BODY_SIZE)
+client_max_body_size 1024M;
+```
+
+重新加载 nginx 配置：
+```bash
+docker compose -f docker/docker-compose.yml exec nginx-proxy nginx -s reload
+```
+
+### 修改文件
+- `docker/vhost.d/coze.happygpts.cn`
+
+---
+
+## 更新说明
+
+### 2025-11-09 更新
+- 添加文件上传大小限制配置（问题 4）
+- 将 `client_max_body_size` 设置为 1024M，匹配后端的 1GB 限制
